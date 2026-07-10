@@ -217,21 +217,26 @@ body{
 #home{width:100%;display:flex;flex-direction:column;align-items:center}
 
 /* ---------- album (a screen state on the same device) ---------- */
-#albumHead{text-align:center;padding:12px 0 4px;flex-shrink:0;width:100%}
-#albumHead h1{font-size:13px;letter-spacing:.24em;text-transform:uppercase;font-weight:400}
-#albumCount{font-size:10px;color:var(--lcd-dim);margin-top:5px;letter-spacing:.16em;text-transform:uppercase;
-  font-family:"SF Mono",ui-monospace,Menlo,monospace}
-#monthNav{
-  display:grid;grid-template-columns:auto 1fr auto;align-items:center;
-  width:calc(100% + 40px);margin:10px 0 0 -20px;padding:0 6px;box-sizing:border-box;
+#albumHead{
+  display:grid;grid-template-columns:auto 1fr auto;grid-template-rows:auto auto auto;
+  align-items:center;gap:0 8px;padding:12px 0 4px;flex-shrink:0;width:100%;box-sizing:border-box;
+  min-height:88px;
 }
-#monthNav button{
-  width:48px;height:38px;border-radius:8px;cursor:pointer;color:var(--lcd-dim);font-size:20px;
+#albumHead h1{grid-column:2;grid-row:1;font-size:13px;letter-spacing:.24em;text-transform:uppercase;font-weight:400;text-align:center}
+#albumCount{
+  grid-column:2;grid-row:2;font-size:10px;color:var(--lcd-dim);margin-top:5px;letter-spacing:.16em;text-transform:uppercase;
+  font-family:"SF Mono",ui-monospace,Menlo,monospace;text-align:center;
+}
+#monthName{grid-column:2;grid-row:3;font-size:11px;letter-spacing:.2em;text-transform:uppercase;text-align:center;margin-top:5px}
+#albumHead button{
+  grid-row:1/-1;width:44px;height:48px;border-radius:8px;cursor:pointer;color:var(--lcd-dim);font-size:22px;
   background:transparent;border:1px solid rgba(169,240,162,.25);
   font-family:"SF Mono",ui-monospace,Menlo,monospace;
+  display:flex;align-items:center;justify-content:center;padding:0;line-height:1;align-self:center;
 }
-#monthNav button:active{background:rgba(169,240,162,.1)}
-#monthName{font-size:11px;letter-spacing:.2em;text-transform:uppercase;text-align:center;justify-self:center}
+#albumHead button:active{background:rgba(169,240,162,.1)}
+#prevM{grid-column:1}
+#nextM{grid-column:3}
 #grid{flex:1;min-height:0;overflow-y:auto;padding:12px 2px 8px;
   display:grid;grid-template-columns:repeat(2,1fr);gap:8px;align-content:start;touch-action:pan-y}
 .cardSlot{
@@ -379,13 +384,11 @@ body{
               <div class="scr" id="scrAlbum">
                 <div class="statusRow"><span class="bars"><i></i><i></i></span><span>album</span></div>
                 <div id="albumHead">
+                  <button id="prevM">‹</button>
                   <h1 class="lcdText">my album</h1>
                   <div id="albumCount"></div>
-                  <div id="monthNav">
-                    <button id="prevM">‹</button>
-                    <div id="monthName" class="lcdText"></div>
-                    <button id="nextM">›</button>
-                  </div>
+                  <div id="monthName" class="lcdText"></div>
+                  <button id="nextM">›</button>
                 </div>
                 <div id="grid"></div>
               </div>
@@ -393,11 +396,11 @@ body{
               <!-- state: card detail -->
               <div class="scr" id="scrCard">
                 <div class="statusRow"><span class="bars"><i></i><i></i></span><span>card</span></div>
-                <div id="cardDate" class="lcdText"></div>
+                <div id="cardDate" class="lcdText">Question</div>
                 <div id="cardBody">
                   <div id="cardQuestion" class="lcdText"></div>
                   <div class="cardAnswer">
-                    <b>you wrote</b>
+                    <b id="cardAnswerDate"></b>
                     <div id="cardAnswer" class="lcdText"></div>
                   </div>
                   <div id="cardPrior"></div>
@@ -514,11 +517,14 @@ function refreshOpenLight(){
 
 /* ---------- screen state machine ---------- */
 let current="scrHome";
-function setScreen(id, flicker){
-  if(id===current) return;
-  document.querySelectorAll(".scr").forEach(s=>s.classList.remove("on"));
-  $(id).classList.add("on");
-  current=id;
+function setScreen(id, flicker=true, force=false){
+  const same=id===current;
+  if(same && !force) return;
+  if(!same){
+    document.querySelectorAll(".scr").forEach(s=>s.classList.remove("on"));
+    $(id).classList.add("on");
+    current=id;
+  }
   if(flicker!==false){
     screen_.classList.remove("flicker");
     void screen_.offsetWidth;           // restart animation
@@ -549,24 +555,45 @@ function fitAnswerArea(){
   const minH=body.clientHeight - $("qText").offsetHeight - 12;
   answer.style.minHeight=Math.max(minH,120)+"px";
 }
-function openQuestion(){
-  if(todayAnswered()){ setScreen("scrHome"); return; }
+function loadOpen(){
   openedToday=true;
   refreshOpenLight();
-  setScreen("scrQuestion");
+  if(todayAnswered()){
+    refreshHomeState();
+    setScreen("scrHome", true, true);
+    return;
+  }
+  setScreen("scrQuestion", true, true);
   const wrap=$("answerWrap"), ansEl=$("answeredText"), ly=$("lastYear"), saved=$("savedMsg");
+  const q=questionFor(today);
+  clearTimeout(typeTimer);
+  typing=false;
   saved.style.display="none";
-  // year-2 preview: sample "last year" answer on day-of-year multiples of 3
-  const showLY = dayOfYear(today)%3===0;
   ly.style.display="none";
+  const draft=answer.value;
   wrap.style.display="none"; stickBtn.style.display="none"; ansEl.style.display="none";
-  typeQuestion(questionFor(today), ()=>{
+  typeQuestion(q, ()=>{
     wrap.style.display="block";
     stickBtn.style.display="inline-block";
+    answer.value=draft;
+    stickBtn.disabled=!draft.trim();
+    const showLY=dayOfYear(today)%3===0;
     if(showLY){ ly.style.display="block"; $("lastYearText").textContent=SAMPLE_LAST_YEAR; }
     fitAnswerArea();
     answer.focus();
   });
+}
+function loadWhy(){ setScreen("scrWhy", true, true); }
+function loadSet(){ setScreen("scrSet", true, true); }
+function loadAlbum(){
+  if(current==="scrCard"){ setScreen("scrAlbum", true, true); return; }
+  pendingAlbumStick=false;
+  if(isAlbumUnlocked()){
+    touchAlbumUnlock();
+    openAlbum(false, true);
+  }else{
+    showAlbumLock();
+  }
 }
 
 answer.addEventListener("input", ()=>{
@@ -588,14 +615,10 @@ document.querySelectorAll(".key").forEach(k=>{
       return;
     }
     const act=k.dataset.act;
-    if(act==="open") openQuestion();
-    if(act==="why")  setScreen(current==="scrWhy" ? "scrHome" : "scrWhy");
-    if(act==="set")  setScreen(current==="scrSet" ? "scrHome" : "scrSet");
-    if(act==="album"){
-      if(current==="scrCard") setScreen("scrAlbum");
-      else if(current==="scrAlbum" || current==="scrAlbumLock"){ lockAlbum(); setScreen("scrHome"); }
-      else requestAlbum(false);
-    }
+    if(act==="open") loadOpen();
+    if(act==="why")  loadWhy();
+    if(act==="set")  loadSet();
+    if(act==="album") loadAlbum();
   });
 });
 
@@ -614,21 +637,28 @@ stickBtn.addEventListener("click", ()=>{
 });
 
 /* ---------- album ---------- */
+const ALBUM_UNLOCK_MS = 60 * 1000; // stay unlocked 1 min after last unlock/open
 let viewYear=today.getFullYear(), viewMonth=today.getMonth();
-let albumUnlocked=false, pendingAlbumStick=false;
+let pendingAlbumStick=false;
 
-function lockAlbum(){ albumUnlocked=false; }
+function albumUnlockUntil(){ return Number(sessionStorage.getItem("oqed.albumUntil") || 0); }
+function isAlbumUnlocked(){ return Date.now() < albumUnlockUntil(); }
+function setAlbumUnlocked(){ sessionStorage.setItem("oqed.albumUntil", String(Date.now() + ALBUM_UNLOCK_MS)); }
+function touchAlbumUnlock(){
+  if(isAlbumUnlocked()) sessionStorage.setItem("oqed.albumUntil", String(Date.now() + ALBUM_UNLOCK_MS));
+}
+function lockAlbum(){ sessionStorage.removeItem("oqed.albumUntil"); }
 function showAlbumLock(){
   $("albumPass").value="";
   $("albumMsg").textContent="";
-  setScreen("scrAlbumLock");
+  setScreen("scrAlbumLock", true, true);
 }
 async function tryUnlockAlbum(){
   const p=$("albumPass").value, msg=$("albumMsg");
   if(!p){ msg.textContent="enter your password"; return; }
   try{
     if(await hashPass(p, unb64(passRec.salt)) !== passRec.hash){ msg.textContent="wrong password"; return; }
-    albumUnlocked=true;
+    setAlbumUnlocked();
     $("albumPass").value="";
     const stick=pendingAlbumStick;
     pendingAlbumStick=false;
@@ -637,7 +667,12 @@ async function tryUnlockAlbum(){
 }
 function requestAlbum(stickToday){
   pendingAlbumStick=!!stickToday;
-  if(albumUnlocked){ pendingAlbumStick=false; openAlbum(stickToday); return; }
+  if(isAlbumUnlocked()){
+    touchAlbumUnlock();
+    pendingAlbumStick=false;
+    openAlbum(stickToday);
+    return;
+  }
   showAlbumLock();
 }
 $("albumUnlock").addEventListener("click", tryUnlockAlbum);
@@ -657,7 +692,7 @@ function priorAnswers(date){
   return out;
 }
 function openCard(date){
-  $("cardDate").textContent = date.toLocaleDateString("en-US",{weekday:"short", month:"short", day:"numeric", year:"numeric"}).toUpperCase();
+  $("cardAnswerDate").textContent = date.toLocaleDateString("en-US",{weekday:"short", month:"short", day:"numeric", year:"numeric"}).toUpperCase();
   $("cardQuestion").textContent = questionFor(date);
   $("cardAnswer").textContent = answers[iso(date)];
   const prior=priorAnswers(date), box=$("cardPrior");
@@ -714,17 +749,19 @@ $("prevM").addEventListener("click",()=>{ viewMonth--; if(viewMonth<0){viewMonth
 $("nextM").addEventListener("click",()=>{ viewMonth++; if(viewMonth>11){viewMonth=0;viewYear++;} renderAlbum(false); });
 
 function focusTodayCard(){
-  const key=iso(today);
-  if(!answers[key] || viewYear!==today.getFullYear() || viewMonth!==today.getMonth()) return;
+  if(!todayAnswered() || viewYear!==today.getFullYear() || viewMonth!==today.getMonth()) return;
   const el=grid.querySelector(".cardSlot.today.filled");
   if(el) el.scrollIntoView({block:"center", behavior:reduceMotion?"auto":"smooth"});
 }
+function scheduleFocusTodayCard(){
+  requestAnimationFrame(()=>requestAnimationFrame(focusTodayCard));
+}
 
-function openAlbum(stickToday){
+function openAlbum(stickToday, force=false){
   viewYear=today.getFullYear(); viewMonth=today.getMonth();
   renderAlbum(stickToday);
-  setScreen("scrAlbum");
-  requestAnimationFrame(()=>focusTodayCard());
+  setScreen("scrAlbum", true, force);
+  if(todayAnswered()) scheduleFocusTodayCard();
 }
 
 /* ---------- gestures: swipe up = album, swipe down = home ---------- */
@@ -741,7 +778,7 @@ document.addEventListener("pointerup", e=>{
     if(dy<-70 && Math.abs(dy)>Math.abs(dx)) requestAlbum(false);
   }else if(target==="album"){
     if(current==="scrCard" && dy>90 && Math.abs(dy)>Math.abs(dx)) setScreen("scrAlbum");
-    else if(current==="scrAlbum" && dy>90 && Math.abs(dy)>Math.abs(dx) && grid.scrollTop<=0){ lockAlbum(); setScreen("scrHome"); }
+    else if(current==="scrAlbum" && dy>90 && Math.abs(dy)>Math.abs(dx) && grid.scrollTop<=0) setScreen("scrHome");
   }
 });
 
@@ -818,6 +855,7 @@ $("importFile").addEventListener("change", async e=>{
 $("resetBtn").addEventListener("click", ()=>{
   localStorage.removeItem("oqed.answers");
   localStorage.removeItem("oqed.pass");
+  lockAlbum();
   location.reload();
 });
 
