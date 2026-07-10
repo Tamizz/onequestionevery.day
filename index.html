@@ -45,11 +45,6 @@ body{
 
 #app{position:fixed;inset:0;overflow:hidden;display:flex;flex-direction:column;align-items:center;justify-content:center}
 
-/* ---------- device carousel (free device + locked themed) ---------- */
-#carousel{width:100%;overflow:visible}
-#track{display:flex;width:200%;transition:transform .5s var(--ease-soft)}
-.slot{width:50%;flex-shrink:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
-
 /* ---------- the device ---------- */
 #device{
   width:min(92vw,380px);
@@ -186,27 +181,6 @@ body{
 }
 .key:active{transform:translateY(2px);box-shadow:0 1px 0 var(--key-shadow), inset 0 1px 0 rgba(255,255,255,.06)}
 
-/* locked themed device */
-.lockedDevice{
-  width:min(92vw,380px);border-radius:34px;padding:16px 16px 18px;
-  background:linear-gradient(180deg,#3a3840,#2c2a31);
-  box-shadow:0 30px 60px rgba(20,18,24,.3), inset 0 1.5px 0 rgba(255,255,255,.06);
-  opacity:.85;
-}
-.lockedDevice .lscreen{background:var(--screen);border-radius:22px;height:clamp(360px,56vh,500px);
-  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;
-  box-shadow:inset 0 2px 10px rgba(0,0,0,.9)}
-.lockedDevice .lock{font-size:30px;filter:grayscale(.3);opacity:.8}
-.lockedDevice .ltext{font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:var(--lcd-dim);
-  font-family:"SF Mono",ui-monospace,Menlo,monospace;text-align:center;line-height:2}
-.lockedDevice .lgrille{height:52px;margin-top:16px;border-radius:4px;
-  background:repeating-linear-gradient(0deg,rgba(0,0,0,.4) 0 3px,transparent 3px 7px)}
-
-/* dots */
-#dots{display:flex;gap:8px;margin-top:26px}
-#dots span{width:6px;height:6px;border-radius:50%;background:#69676e;opacity:.35;transition:opacity .3s}
-#dots span.on{opacity:.9}
-
 #home{width:100%;display:flex;flex-direction:column;align-items:center}
 
 /* ---------- album (a screen state on the same device) ---------- */
@@ -261,12 +235,7 @@ body{
 
   <!-- HOME -->
   <div id="home">
-    <div id="carousel">
-      <div id="track">
-
-        <!-- slot 1: the daily device -->
-        <div class="slot">
-          <div id="device">
+    <div id="device">
             <div id="screen">
 
               <!-- state: FTUX (first launch only) -->
@@ -373,22 +342,6 @@ body{
               </div>
             </div>
           </div>
-        </div>
-
-        <!-- slot 2: locked themed device -->
-        <div class="slot">
-          <div class="lockedDevice">
-            <div class="lscreen">
-              <div class="lock">🔒</div>
-              <div class="ltext">themed devices<br>with subscription</div>
-            </div>
-            <div class="lgrille"></div>
-          </div>
-        </div>
-
-      </div>
-    </div>
-    <div id="dots"><span class="on"></span><span></span></div>
   </div>
 
 </div>
@@ -452,7 +405,7 @@ const MONTHS = ["January","February","March","April","May","June","July","August
 
 const $ = id => document.getElementById(id);
 const screen_=$("screen"), qText=$("qText"), answer=$("answer"),
-      stickBtn=$("stickBtn"), grid=$("grid"), track=$("track");
+      stickBtn=$("stickBtn"), grid=$("grid");
 
 $("bigDate").textContent = today.toLocaleDateString("en-US",{weekday:"short", month:"short", day:"numeric"}).toUpperCase();
 $("qNo").textContent = "Q#" + String(dayOfYear(today)).padStart(3,"0") + " · " +
@@ -582,7 +535,7 @@ function openAlbum(stickToday){
   setScreen("scrAlbum");
 }
 
-/* ---------- gestures: swipe up = album, horizontal = switch device ---------- */
+/* ---------- gestures: swipe up = album, swipe down = home ---------- */
 let px=0, py=0, trackingPtr=false, target=null;
 document.addEventListener("pointerdown", e=>{
   if(!passRec || e.target.closest("textarea,input,button")) return;
@@ -593,19 +546,11 @@ document.addEventListener("pointerup", e=>{
   if(!trackingPtr) return; trackingPtr=false;
   const dx=e.clientX-px, dy=e.clientY-py;
   if(target==="home"){
-    if(dy<-70 && Math.abs(dy)>Math.abs(dx)){ openAlbum(false); return; }
-    if(Math.abs(dx)>70 && Math.abs(dx)>Math.abs(dy)) switchBox(dx<0?1:0);
+    if(dy<-70 && Math.abs(dy)>Math.abs(dx)) openAlbum(false);
   }else if(target==="album"){
     if(dy>90 && Math.abs(dy)>Math.abs(dx) && grid.scrollTop<=0) setScreen("scrHome");
   }
 });
-
-let boxIndex=0;
-function switchBox(i){
-  boxIndex=Math.max(0,Math.min(1,i));
-  track.style.transform="translateX("+(boxIndex*-50)+"%)";
-  document.querySelectorAll("#dots span").forEach((s,n)=>s.classList.toggle("on",n===boxIndex));
-}
 
 /* ---------- FTUX ---------- */
 const ftuxSteps=document.querySelectorAll(".ftuxStep");
