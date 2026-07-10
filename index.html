@@ -411,7 +411,8 @@ body{
               <div class="scr" id="scrSet">
                 <div class="statusRow"><span class="bars"><i></i><i></i></span><span>settings</span></div>
                 <h3>privacy</h3>
-                <div class="body dim lcdText">Your answers live only on this device. No account. No cloud. No tracking.</div>
+                <div class="body lcdText">Your answers live only on this device. No account. No cloud. No tracking.</div>
+                <div class="lcdMsg" aria-hidden="true"></div>
                 <h3>backup</h3>
                 <div class="body dim lcdText">Export writes an encrypted file. Import restores one. Both need your password.</div>
                 <input type="password" class="lcdInput" id="bkPass" placeholder="> backup password_">
@@ -421,7 +422,11 @@ body{
                 </div>
                 <div class="lcdMsg" id="bkMsg"></div>
                 <input type="file" id="importFile" accept=".json,application/json" style="display:none">
-                <button id="resetBtn">reset prototype</button>
+                <h3>reset</h3>
+                <div class="body dim lcdText">Clears all answers and returns to first-time setup. Requires your password.</div>
+                <input type="password" class="lcdInput" id="resetPass" placeholder="> password_">
+                <button id="resetBtn">reset device</button>
+                <div class="lcdMsg" id="resetMsg"></div>
               </div>
 
             </div>
@@ -584,7 +589,11 @@ function loadOpen(){
   });
 }
 function loadWhy(){ setScreen("scrWhy", true, true); }
-function loadSet(){ setScreen("scrSet", true, true); }
+function loadSet(){
+  $("resetPass").value="";
+  $("resetMsg").textContent="";
+  setScreen("scrSet", true, true);
+}
 function loadAlbum(){
   if(current==="scrCard"){ setScreen("scrAlbum", true, true); return; }
   pendingAlbumStick=false;
@@ -852,12 +861,18 @@ $("importFile").addEventListener("change", async e=>{
 });
 
 /* ---------- reset ---------- */
-$("resetBtn").addEventListener("click", ()=>{
-  localStorage.removeItem("oqed.answers");
-  localStorage.removeItem("oqed.pass");
-  lockAlbum();
-  location.reload();
+$("resetBtn").addEventListener("click", async ()=>{
+  const msg=$("resetMsg"), p=$("resetPass").value;
+  if(!p){ msg.textContent="enter your password"; return; }
+  try{
+    if(await hashPass(p, unb64(passRec.salt)) !== passRec.hash){ msg.textContent="wrong password"; return; }
+    localStorage.removeItem("oqed.answers");
+    localStorage.removeItem("oqed.pass");
+    lockAlbum();
+    location.reload();
+  }catch(err){ msg.textContent="reset failed"; }
 });
+$("resetPass").addEventListener("keydown", e=>{ if(e.key==="Enter") $("resetBtn").click(); });
 
 /* ---------- restore state on load ---------- */
 function refreshHomeState(){
