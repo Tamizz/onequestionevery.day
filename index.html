@@ -95,6 +95,9 @@ body{
 #scrHome .subLine{margin-top:10px;font-size:13px;color:var(--lcd-dim);letter-spacing:.12em;text-transform:uppercase;font-family:"SF Mono",ui-monospace,Menlo,monospace}
 #scrHome .fill{flex:1}
 #scrHome .readyLine{font-size:13px;letter-spacing:.14em;text-transform:uppercase;animation:blinkSoft 2.4s ease-in-out infinite}
+#scrHome .readyLine.done{display:flex;flex-direction:column;gap:6px;animation:none}
+#scrHome .readyDoneHead{font-size:13px;letter-spacing:.14em;text-transform:uppercase}
+#scrHome .readyDoneSub{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--lcd-dim);font-family:"SF Mono",ui-monospace,Menlo,monospace}
 #scrHome .readyDot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--dot);box-shadow:0 0 6px rgba(255,90,54,.6);vertical-align:1px;margin-right:7px}
 @keyframes blinkSoft{0%,100%{opacity:.35}50%{opacity:1}}
 
@@ -214,18 +217,21 @@ body{
 #home{width:100%;display:flex;flex-direction:column;align-items:center}
 
 /* ---------- album (a screen state on the same device) ---------- */
-#albumHead{text-align:center;padding:12px 0 4px;flex-shrink:0}
+#albumHead{text-align:center;padding:12px 0 4px;flex-shrink:0;width:100%}
 #albumHead h1{font-size:13px;letter-spacing:.24em;text-transform:uppercase;font-weight:400}
 #albumCount{font-size:10px;color:var(--lcd-dim);margin-top:5px;letter-spacing:.16em;text-transform:uppercase;
   font-family:"SF Mono",ui-monospace,Menlo,monospace}
-#monthNav{display:flex;align-items:center;justify-content:center;gap:12px;margin-top:10px}
+#monthNav{
+  display:grid;grid-template-columns:auto 1fr auto;align-items:center;
+  width:calc(100% + 40px);margin:10px 0 0 -20px;padding:0 6px;box-sizing:border-box;
+}
 #monthNav button{
-  width:32px;height:24px;border-radius:6px;cursor:pointer;color:var(--lcd-dim);font-size:13px;
+  width:48px;height:38px;border-radius:8px;cursor:pointer;color:var(--lcd-dim);font-size:20px;
   background:transparent;border:1px solid rgba(169,240,162,.25);
   font-family:"SF Mono",ui-monospace,Menlo,monospace;
 }
 #monthNav button:active{background:rgba(169,240,162,.1)}
-#monthName{font-size:11px;letter-spacing:.2em;text-transform:uppercase;min-width:120px;text-align:center}
+#monthName{font-size:11px;letter-spacing:.2em;text-transform:uppercase;text-align:center;justify-self:center}
 #grid{flex:1;min-height:0;overflow-y:auto;padding:12px 2px 8px;
   display:grid;grid-template-columns:repeat(2,1fr);gap:8px;align-content:start;touch-action:pan-y}
 .cardSlot{
@@ -240,13 +246,14 @@ body{
   border:1px solid rgba(169,240,162,.35);
   background:rgba(169,240,162,.05);
   box-shadow:0 0 12px rgba(140,240,140,.08), inset 0 0 14px rgba(140,240,140,.05);
-  padding:7px 6px;justify-content:flex-start;gap:5px;overflow:hidden;cursor:pointer;
+  padding:6px 5px;justify-content:flex-start;align-items:stretch;gap:4px;overflow:hidden;cursor:pointer;
 }
-.cardSlot.filled .dnum{color:var(--lcd-dim);font-size:9px;letter-spacing:.14em}
+.cardSlot.filled .dnum{color:var(--lcd-dim);font-size:9px;letter-spacing:.14em;text-align:center;flex-shrink:0}
 .cardSlot.filled .snippet{
-  font-size:9px;line-height:1.4;text-align:center;
+  flex:1;min-height:0;width:100%;
+  font-size:9px;line-height:1.35;text-align:center;
   font-family:"SF Mono",ui-monospace,Menlo,monospace;color:var(--lcd);text-shadow:0 0 6px var(--lcd-glow);
-  display:-webkit-box;-webkit-line-clamp:5;-webkit-box-orient:vertical;overflow:hidden;
+  display:-webkit-box;-webkit-line-clamp:12;-webkit-box-orient:vertical;overflow:hidden;
 }
 .cardSlot.justStuck{animation:stick .6s var(--ease-spring)}
 @keyframes stick{
@@ -364,7 +371,6 @@ body{
                 <div class="lcdMsg" id="albumMsg"></div>
                 <div class="fill"></div>
                 <div class="qNav">
-                  <button class="lcdBtn lcdBtn--secondary" id="albumCancel">◀ back</button>
                   <button class="lcdBtn" id="albumUnlock">unlock ▶</button>
                 </div>
               </div>
@@ -395,9 +401,6 @@ body{
                     <div id="cardAnswer" class="lcdText"></div>
                   </div>
                   <div id="cardPrior"></div>
-                </div>
-                <div class="qNav">
-                  <button class="lcdBtn lcdBtn--secondary" id="cardBack">◀ album</button>
                 </div>
               </div>
 
@@ -547,6 +550,7 @@ function fitAnswerArea(){
   answer.style.minHeight=Math.max(minH,120)+"px";
 }
 function openQuestion(){
+  if(todayAnswered()){ setScreen("scrHome"); return; }
   openedToday=true;
   refreshOpenLight();
   setScreen("scrQuestion");
@@ -555,14 +559,6 @@ function openQuestion(){
   // year-2 preview: sample "last year" answer on day-of-year multiples of 3
   const showLY = dayOfYear(today)%3===0;
   ly.style.display="none";
-  if(todayAnswered()){
-    wrap.style.display="none"; stickBtn.style.display="none";
-    qText.textContent=questionFor(today);
-    ansEl.style.display="block"; ansEl.textContent="> "+answers[iso(today)];
-    if(showLY){ ly.style.display="block"; $("lastYearText").textContent=SAMPLE_LAST_YEAR; }
-    saved.style.display="block";
-    return;
-  }
   wrap.style.display="none"; stickBtn.style.display="none"; ansEl.style.display="none";
   typeQuestion(questionFor(today), ()=>{
     wrap.style.display="block";
@@ -577,7 +573,7 @@ answer.addEventListener("input", ()=>{
   stickBtn.disabled = answer.value.trim().length===0;
   fitAnswerArea();
 });
-window.addEventListener("resize", fitAnswerArea);
+window.addEventListener("resize", ()=>{ fitAnswerArea(); if(current==="scrAlbum") fitCardSnippets(); });
 
 /* ---------- keys ---------- */
 document.querySelectorAll(".key").forEach(k=>{
@@ -615,7 +611,6 @@ stickBtn.addEventListener("click", ()=>{
   $("answeredText").textContent="> "+answers[iso(today)];
   $("savedMsg").style.display="block";
   refreshHomeState();
-  setTimeout(()=>requestAlbum(true), 650);
 });
 
 /* ---------- album ---------- */
@@ -647,7 +642,6 @@ function requestAlbum(stickToday){
 }
 $("albumUnlock").addEventListener("click", tryUnlockAlbum);
 $("albumPass").addEventListener("keydown", e=>{ if(e.key==="Enter") tryUnlockAlbum(); });
-$("albumCancel").addEventListener("click", ()=>{ pendingAlbumStick=false; setScreen("scrHome"); });
 
 function priorAnswers(date){
   const key=iso(date), out=[];
@@ -677,7 +671,16 @@ function openCard(date){
   }
   setScreen("scrCard");
 }
-$("cardBack").addEventListener("click", ()=>setScreen("scrAlbum"));
+
+function fitCardSnippets(){
+  grid.querySelectorAll(".cardSlot.filled").forEach(slot=>{
+    const sn=slot.querySelector(".snippet");
+    if(!sn) return;
+    const lh=parseFloat(getComputedStyle(sn).lineHeight)||12;
+    const avail=slot.clientHeight - sn.offsetTop - 3;
+    sn.style.webkitLineClamp=String(Math.max(4, Math.floor(avail/lh)));
+  });
+}
 
 function renderAlbum(stickToday){
   $("monthName").textContent = (MONTHS[viewMonth]+" "+viewYear).toUpperCase();
@@ -705,6 +708,7 @@ function renderAlbum(stickToday){
     if(isToday) slot.classList.add("today");
     grid.appendChild(slot);
   }
+  requestAnimationFrame(fitCardSnippets);
 }
 $("prevM").addEventListener("click",()=>{ viewMonth--; if(viewMonth<0){viewMonth=11;viewYear--;} renderAlbum(false); });
 $("nextM").addEventListener("click",()=>{ viewMonth++; if(viewMonth>11){viewMonth=0;viewYear++;} renderAlbum(false); });
@@ -821,10 +825,12 @@ $("resetBtn").addEventListener("click", ()=>{
 function refreshHomeState(){
   if(todayAnswered()){
     $("statusWord").textContent="done today";
-    $("readyLine").textContent="✓ today's card is in the album";
+    $("readyLine").classList.add("done");
+    $("readyLine").innerHTML='<span class="readyDoneHead lcdText">✓ completed</span><span class="readyDoneSub">today\'s answer is in the album</span>';
     $("readyLine").style.animation="none";
   }else if(passRec){
     $("statusWord").textContent="ready";
+    $("readyLine").classList.remove("done");
     $("readyLine").innerHTML='<span class="readyDot"></span>press open';
     $("readyLine").style.animation="";
   }
