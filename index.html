@@ -147,14 +147,25 @@ body{
 }
 .lcdBtn:disabled{opacity:.3;cursor:default}
 .lcdBtn:not(:disabled):active{background:rgba(169,240,162,.12)}
+.lcdBtn--secondary{
+  color:var(--lcd-dim);text-shadow:none;
+  border-color:rgba(169,240,162,.2);
+}
+.lcdBtn--secondary:not(:disabled):active{background:rgba(169,240,162,.06)}
 .btnRow{display:flex;gap:10px;margin-top:16px}
 .lcdMsg{margin-top:12px;font-size:11px;letter-spacing:.14em;text-transform:uppercase;
   color:var(--lcd-dim);font-family:"SF Mono",ui-monospace,Menlo,monospace;min-height:14px}
 .ftuxStep{display:none;flex-direction:column;flex:1;min-height:0}
 .ftuxStep.on{display:flex}
-.stepDots{display:flex;gap:6px;margin-top:auto;padding-top:16px}
+.stepDots{display:flex;gap:6px;justify-content:center}
 .stepDots i{width:5px;height:5px;border-radius:50%;background:var(--lcd-dim);opacity:.3}
 .stepDots i.on{opacity:1;background:var(--lcd)}
+.ftuxNav{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;margin-top:auto;padding-top:16px;width:100%;gap:10px}
+.ftuxNav .ftuxBack{justify-self:start}
+.ftuxNav .stepDots{justify-self:center}
+.ftuxNav .ftuxNext,.ftuxNav #ftuxBegin{justify-self:end;grid-column:3}
+.ftuxNav .ftuxBack{visibility:hidden;pointer-events:none}
+.ftuxStep ~ .ftuxStep .ftuxNav .ftuxBack{visibility:visible;pointer-events:auto}
 
 #resetBtn{
   margin-top:18px;align-self:flex-start;background:transparent;cursor:pointer;
@@ -245,15 +256,22 @@ body{
                 <div class="ftuxStep on">
                   <h3>how it works</h3>
                   <div class="body lcdText">Every day, one question waits inside this device.<br><br>Press OPEN. Answer it. The answer sticks in your album.</div>
-                  <div class="stepDots"><i class="on"></i><i></i><i></i></div>
-                  <button class="lcdBtn ftuxNext" style="margin-top:14px;align-self:flex-start">next ▶</button>
+                  <div class="ftuxNav">
+                    <button class="lcdBtn lcdBtn--secondary ftuxBack">◀ back</button>
+                    <div class="stepDots"><i class="on"></i><i></i><i></i></div>
+                    <button class="lcdBtn ftuxNext">next ▶</button>
+                  </div>
                 </div>
 
                 <div class="ftuxStep">
-                  <h3>the rules</h3>
-                  <div class="body lcdText">Questions repeat every year — next year, today's card shows who you were today.</div>
-                  <div class="stepDots"><i></i><i class="on"></i><i></i></div>
-                  <button class="lcdBtn ftuxNext" style="margin-top:14px;align-self:flex-start">next ▶</button>
+                  <h3>why this exists</h3>
+                  <div class="body lcdText">One question a day.<br>Real questions, from real people.<br><br>— honesty<br>— transparency<br>— self-reflection<br>— evolution<br>— time</div>
+                  <div class="body dim lcdText" style="margin-top:14px">Questions repeat every year. Next year, today's card shows who you were today.</div>
+                  <div class="ftuxNav">
+                    <button class="lcdBtn lcdBtn--secondary ftuxBack">◀ back</button>
+                    <div class="stepDots"><i></i><i class="on"></i><i></i></div>
+                    <button class="lcdBtn ftuxNext">next ▶</button>
+                  </div>
                 </div>
 
                 <div class="ftuxStep">
@@ -262,8 +280,11 @@ body{
                   <input type="password" class="lcdInput" id="pass1" placeholder="> create password_">
                   <input type="password" class="lcdInput" id="pass2" placeholder="> repeat password_">
                   <div class="lcdMsg" id="ftuxMsg"></div>
-                  <div class="stepDots"><i></i><i></i><i class="on"></i></div>
-                  <button class="lcdBtn" id="ftuxBegin" style="margin-top:14px;align-self:flex-start">▶ begin</button>
+                  <div class="ftuxNav">
+                    <button class="lcdBtn lcdBtn--secondary ftuxBack">◀ back</button>
+                    <div class="stepDots"><i></i><i></i><i class="on"></i></div>
+                    <button class="lcdBtn" id="ftuxBegin">begin ▶</button>
+                  </div>
                 </div>
               </div>
 
@@ -555,9 +576,15 @@ document.addEventListener("pointerup", e=>{
 /* ---------- FTUX ---------- */
 const ftuxSteps=document.querySelectorAll(".ftuxStep");
 let ftuxAt=0;
+function showFtuxStep(n){
+  ftuxAt=n;
+  ftuxSteps.forEach((s,i)=>s.classList.toggle("on", i===ftuxAt));
+}
 document.querySelectorAll(".ftuxNext").forEach(b=>b.addEventListener("click", ()=>{
-  ftuxAt++;
-  ftuxSteps.forEach((s,n)=>s.classList.toggle("on", n===ftuxAt));
+  if(ftuxAt < ftuxSteps.length-1) showFtuxStep(ftuxAt+1);
+}));
+document.querySelectorAll(".ftuxBack").forEach(b=>b.addEventListener("click", ()=>{
+  if(ftuxAt > 0) showFtuxStep(ftuxAt-1);
 }));
 $("ftuxBegin").addEventListener("click", async ()=>{
   const p1=$("pass1").value, p2=$("pass2").value, msg=$("ftuxMsg");
