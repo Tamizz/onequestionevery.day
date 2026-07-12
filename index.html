@@ -184,9 +184,9 @@ body{
 #lowerPanel{display:flex;align-items:flex-end;gap:14px;margin-top:16px;padding:0 4px}
 .grille{width:64px;height:52px;flex-shrink:0;border-radius:4px;
   background:repeating-linear-gradient(0deg,rgba(0,0,0,.5) 0 3px,transparent 3px 7px)}
-#keys{flex:1;display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+#keys{flex:1;display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
 .keyCol{display:flex;flex-direction:column;gap:8px;align-items:center}
-.keyLabel{font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--label);
+.keyLabel{font-size:8.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--label);
   display:flex;align-items:center;gap:4px;white-space:nowrap}
 .keyLabel .odot{width:6px;height:6px;border-radius:50%;background:var(--dot)}
 #openDot{background:rgba(255,90,54,.25);opacity:.4;box-shadow:none}
@@ -278,6 +278,32 @@ body{
 .priorHead{font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--lcd-dim);margin:18px 0 10px;font-family:"SF Mono",ui-monospace,Menlo,monospace}
 .priorEntry{margin-top:12px;padding-top:12px;border-top:1px dashed rgba(169,240,162,.18)}
 .priorEntry .lcdText{font-size:13px;line-height:1.55;white-space:pre-wrap}
+
+/* ---------- stats / insights ---------- */
+.statItem{margin-top:20px}
+.statItem:first-of-type{margin-top:0}
+.statValue{font-size:28px;line-height:1.1;letter-spacing:.04em}
+.statLabel{font-size:12px;letter-spacing:.14em;text-transform:uppercase;margin-top:4px}
+.statWhy{margin-top:6px}
+.statsChart{margin-top:12px}
+.statsChartBars{
+  display:flex;align-items:flex-end;gap:3px;height:72px;
+}
+.statsBar{
+  flex:1;min-width:0;border-radius:2px 2px 0 0;
+  background:rgba(169,240,162,.35);
+  box-shadow:0 0 6px rgba(140,240,140,.12);
+}
+.statsBar.empty{background:rgba(169,240,162,.08);box-shadow:none}
+.statsChartLabels{
+  display:flex;justify-content:space-between;margin-top:6px;
+  font-size:9px;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--lcd-dim);font-family:"SF Mono",ui-monospace,Menlo,monospace;
+}
+.statsChartLabels span{flex:1;text-align:center;min-width:0}
+.statsChartLabels span:first-child{text-align:left}
+.statsChartLabels span:last-child{text-align:right}
+#statsFooter{margin-top:24px}
 
 @media (prefers-reduced-motion:reduce){
   *,*::before,*::after{animation:none!important;transition-duration:.01s!important}
@@ -429,6 +455,48 @@ body{
                 <div class="lcdMsg" id="resetMsg"></div>
               </div>
 
+              <!-- state: stats lock -->
+              <div class="scr" id="scrStatsLock">
+                <div class="statusRow"><span class="bars"><i></i><i></i></span><span id="statsLockLabel"></span></div>
+                <h3 id="statsLockHeading"></h3>
+                <div class="body dim lcdText" id="statsLockBody"></div>
+                <input type="password" class="lcdInput" id="statsPass" placeholder="> password_">
+                <div class="lcdMsg" id="statsMsg"></div>
+                <div class="fill"></div>
+                <div class="qNav">
+                  <button class="lcdBtn" id="statsUnlock">unlock ▶</button>
+                </div>
+              </div>
+
+              <!-- state: stats / insights -->
+              <div class="scr" id="scrStats">
+                <div class="statusRow"><span class="bars"><i></i><i></i></span><span id="statsScreenLabel"></span></div>
+                <h3 id="statsTitle"></h3>
+                <div class="body dim lcdText" id="statsTransparency"></div>
+                <div id="statsContent" hidden>
+                  <div class="statItem" id="statAnswered" role="group">
+                    <div class="statValue lcdText" id="statAnsweredVal"></div>
+                    <div class="statLabel lcdText" id="statAnsweredLabel"></div>
+                    <div class="statWhy body dim lcdText" id="statAnsweredWhy"></div>
+                  </div>
+                  <div class="statItem" id="statDays" role="group">
+                    <div class="statValue lcdText" id="statDaysVal"></div>
+                    <div class="statLabel lcdText" id="statDaysLabel"></div>
+                    <div class="statWhy body dim lcdText" id="statDaysWhy"></div>
+                  </div>
+                  <div class="statItem" id="statWords" role="group">
+                    <div class="statLabel lcdText" id="statWordsLabel"></div>
+                    <div class="statWhy body dim lcdText" id="statWordsWhy"></div>
+                    <div class="statsChart" id="statsChart" role="img">
+                      <div class="statsChartBars" id="statsChartBars"></div>
+                      <div class="statsChartLabels" id="statsChartLabels"></div>
+                    </div>
+                  </div>
+                  <div class="body dim lcdText" id="statsFooter"></div>
+                </div>
+                <div class="body dim lcdText" id="statsEmpty" hidden></div>
+              </div>
+
             </div>
 
             <div id="lowerPanel">
@@ -437,6 +505,7 @@ body{
                 <div class="keyCol"><div class="keyLabel">why</div><button class="key" data-act="why"></button></div>
                 <div class="keyCol"><div class="keyLabel"><span class="odot" id="openDot"></span>open</div><button class="key" data-act="open"></button></div>
                 <div class="keyCol"><div class="keyLabel">album</div><button class="key" data-act="album"></button></div>
+                <div class="keyCol"><div class="keyLabel">stats</div><button class="key" data-act="stats"></button></div>
                 <div class="keyCol"><div class="keyLabel">set</div><button class="key" data-act="set"></button></div>
               </div>
             </div>
@@ -501,6 +570,38 @@ const iso = d => d.toISOString().slice(0,10);
 const dayOfYear = d => Math.floor((d - new Date(d.getFullYear(),0,0)) / 864e5);
 const questionFor = d => SAMPLE_QUESTIONS[ dayOfYear(d) % SAMPLE_QUESTIONS.length ];
 const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+
+/* ---------- localized strings ---------- */
+const STR = {
+  stats: {
+    screenLabel: "stats",
+    lockHeading: "unlock insights",
+    lockBody: "Your writing data is private. Enter your password to view insights.",
+    title: "insights",
+    transparency: "This is every piece of data this app knows about you. All of it is computed on this device, from your own answers. Nothing else exists — here or anywhere.",
+    answered: {
+      label: "questions answered",
+      why: "So your album knows how many cards you've collected."
+    },
+    daysYear: {
+      label: "days reflected this year",
+      why: "So the app can show your progress through this year's cycle."
+    },
+    wordsWeek: {
+      label: "words written per week",
+      why: "Computed from your text answers so you can see your writing rhythm. The app never reads what you wrote — only counts words.",
+      chartAria: "Words written per week, last 12 weeks"
+    },
+    footer: "That's all. Delete your answers and these numbers disappear with them.",
+    empty: "Your reflections will appear here.",
+    enterPassword: "enter your password",
+    wrongPassword: "wrong password",
+    unlockFailed: "unlock failed"
+  }
+};
+function t(path){
+  return path.split(".").reduce((o,k)=>o[k], STR);
+}
 
 const $ = id => document.getElementById(id);
 const screen_=$("screen"), qText=$("qText"), answer=$("answer"),
@@ -605,6 +706,116 @@ function loadAlbum(){
   }
 }
 
+/* ---------- stats / insights ---------- */
+function calendarWeekStart(d){
+  const date=new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  const day=date.getDay();
+  const diff=day===0 ? -6 : 1-day;
+  date.setDate(date.getDate()+diff);
+  date.setHours(0,0,0,0);
+  return date;
+}
+function countWords(text){
+  if(!text || typeof text!=="string") return 0;
+  return text.trim().split(/\s+/).filter(Boolean).length;
+}
+function renderStats(){
+  const s=t("stats");
+  $("statsScreenLabel").textContent=s.screenLabel;
+  $("statsTitle").textContent=s.title;
+  $("statsTransparency").textContent=s.transparency;
+  $("statAnsweredLabel").textContent=s.answered.label;
+  $("statAnsweredWhy").textContent=s.answered.why;
+  $("statDaysLabel").textContent=s.daysYear.label;
+  $("statDaysWhy").textContent=s.daysYear.why;
+  $("statWordsLabel").textContent=s.wordsWeek.label;
+  $("statWordsWhy").textContent=s.wordsWeek.why;
+  $("statsFooter").textContent=s.footer;
+  $("statsEmpty").textContent=s.empty;
+  $("statsChart").setAttribute("aria-label", s.wordsWeek.chartAria);
+
+  const total=Object.keys(answers).length;
+  const empty=total===0;
+  $("statsContent").hidden=empty;
+  $("statsEmpty").hidden=!empty;
+  if(empty) return;
+
+  const year=today.getFullYear();
+  const daysYear=Object.keys(answers).filter(k=>k.startsWith(year+"-")).length;
+  $("statAnsweredVal").textContent=String(total);
+  $("statDaysVal").textContent=String(daysYear);
+  $("statAnswered").setAttribute("aria-label", total+", "+s.answered.label+", "+s.answered.why);
+  $("statDays").setAttribute("aria-label", daysYear+", "+s.daysYear.label+", "+s.daysYear.why);
+  $("statWords").setAttribute("aria-label", s.wordsWeek.label+", "+s.wordsWeek.why);
+
+  const weekMap={};
+  for(const [dateStr, text] of Object.entries(answers)){
+    const d=new Date(dateStr+"T12:00:00");
+    const wk=iso(calendarWeekStart(d));
+    weekMap[wk]=(weekMap[wk]||0)+countWords(text);
+  }
+  const weeks=[];
+  const curStart=calendarWeekStart(today);
+  for(let i=11; i>=0; i--){
+    const ws=new Date(curStart);
+    ws.setDate(ws.getDate()-i*7);
+    weeks.push({key:iso(ws), date:ws});
+  }
+  const counts=weeks.map(w=>weekMap[w.key]||0);
+  const max=Math.max(...counts, 1);
+  const bars=$("statsChartBars");
+  bars.innerHTML="";
+  counts.forEach((c,i)=>{
+    const bar=document.createElement("div");
+    bar.className="statsBar"+(c===0?" empty":"");
+    bar.style.height=(c===0 ? 2 : Math.round(c/max*100))+"%";
+    bar.setAttribute("aria-hidden","true");
+    bars.appendChild(bar);
+  });
+  const labelIdx=[0, 5, 11];
+  const labels=$("statsChartLabels");
+  labels.innerHTML="";
+  weeks.forEach((w,i)=>{
+    const span=document.createElement("span");
+    if(labelIdx.includes(i)){
+      span.textContent=w.date.toLocaleDateString("en-US",{month:"short"}).toUpperCase();
+    }
+    labels.appendChild(span);
+  });
+}
+function openStats(force=false){
+  renderStats();
+  setScreen("scrStats", true, force);
+}
+function showStatsLock(){
+  $("statsLockLabel").textContent=t("stats.screenLabel");
+  $("statsLockHeading").textContent=t("stats.lockHeading");
+  $("statsLockBody").textContent=t("stats.lockBody");
+  $("statsPass").value="";
+  $("statsMsg").textContent="";
+  setScreen("scrStatsLock", true, true);
+}
+function loadStats(){
+  if(isAlbumUnlocked()){
+    touchAlbumUnlock();
+    openStats(true);
+  }else{
+    showStatsLock();
+  }
+}
+async function tryUnlockStats(){
+  const p=$("statsPass").value, msg=$("statsMsg"), s=t("stats");
+  if(!p){ msg.textContent=s.enterPassword; return; }
+  try{
+    if(await hashPass(p, unb64(passRec.salt)) !== passRec.hash){ msg.textContent=s.wrongPassword; return; }
+    setAlbumUnlocked();
+    $("statsPass").value="";
+    openStats();
+  }catch(err){ msg.textContent=s.unlockFailed; }
+}
+$("statsUnlock").addEventListener("click", tryUnlockStats);
+$("statsPass").addEventListener("keydown", e=>{ if(e.key==="Enter") tryUnlockStats(); });
+
 answer.addEventListener("input", ()=>{
   stickBtn.disabled = answer.value.trim().length===0;
   fitAnswerArea();
@@ -628,6 +839,7 @@ document.querySelectorAll(".key").forEach(k=>{
     if(act==="why")  loadWhy();
     if(act==="set")  loadSet();
     if(act==="album") loadAlbum();
+    if(act==="stats") loadStats();
   });
 });
 
